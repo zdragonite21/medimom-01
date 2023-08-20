@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Children } from "react";
 import MedItem from "./MedItem";
 import moment from "moment";
 
@@ -7,43 +7,29 @@ const defaults = [
     id: 1,
     name: "Aspirin",
     description: "Pain reliever",
-    time: moment("8:00 AM", "h:mm A"),
-    interval: moment.duration(6, "hours"),
-    alert: false,
-    disabled: false,
+    time: ["8:00 AM"],
+    interval: 6,
   },
   {
     id: 2,
     name: "Acetaminophen",
     description: "Pain reliever",
-    time: moment("10:00 AM", "h:mm A"),
-    interval: moment.duration(4, "hours"),
-    alert: false,
-    disabled: false,
+    time: ["10:00 AM"],
+    interval: 4,
   },
   {
     id: 3,
     name: "Ibuprofen",
     description: "Anti-inflammatory",
-    time: moment("12:00 PM", "h:mm A"),
-    interval: moment.duration(2, "hours"),
-    alert: false,
-    disabled: false,
-  },
-  {
-    id: 4,
-    name: "Acetaminophen",
-    description: "Pain reliever",
-    time: moment("4:00 PM", "h:mm A"),
-    interval: moment.duration(4, "hours"),
-    alert: false,
-    disabled: false,
+    time: ["12:00 PM", "4:00 PM"],
+    interval: 2,
   },
 ];
 
 function App() {
-  const [medLs, setMedLs] = useState(defaults);
-  const [taken, setTaken] = useState([]);
+  // helper functions
+
+  const [time, setTime] = useState(moment());
 
   function setMedDisable(id, disabled) {
     setMedLs((prevMedLs) =>
@@ -69,20 +55,7 @@ function App() {
     );
   }
 
-  function resetMedLs() {
-    setMedLs(defaults);
-  }
-
-  function rmMed(id) {
-    const upMed = medLs.filter((med) => med.id !== id);
-    setMedLs(upMed);
-    const med = medLs.find((med) => med.id === id);
-    setTaken((prevTaken) => [...prevTaken, { name: med.name, time: moment() }]);
-  }
-
-  const [time, setTime] = useState(moment());
-
-  useEffect(() => {
+  function updateAlert() {
     medLs.forEach((med) => {
       if (time.isAfter(med.time)) {
         setMedAlert(med.id, true);
@@ -90,7 +63,78 @@ function App() {
         setMedAlert(med.id, false);
       }
     });
-  }, [time, medLs]);
+  }
+
+  function setMedLsSorted(medLs) {
+    const sortedMedLs = [];
+    var id = 0;
+    medLs.forEach((med) => {
+      med.time.forEach((t) => {
+        const medTime = moment(t, "h:mm A");
+        const alert = time.isAfter(medTime) ? true : false;
+        sortedMedLs.push({
+          ...med,
+          id,
+          time: medTime,
+          interval: moment.duration(med.interval, "hours"),
+          alert,
+          disabled: false,
+        });
+        id++;
+      });
+    });
+    sortedMedLs.sort((a, b) => a.time.diff(b.time));
+    return sortedMedLs;
+  }
+
+  // start
+
+  const [medLs, setMedLs] = useState(setMedLsSorted(defaults));
+
+  const [LastTaken, setLastTaken] = useState(
+    defaults.reduce((acc, med) => ({ ...acc, [med.name]: null }), {})
+  );
+
+  console.log(LastTaken);
+
+  function resetMedLs() {
+    setMedLs(setMedLsSorted(defaults));
+    setLastTaken(
+      defaults.reduce((acc, med) => ({ ...acc, [med.name]: null }), {})
+    );
+  }
+
+  function checkInterval(med) {
+    // returns true if interval has passed since last taken
+    const taken = LastTaken[med.name];
+    console.log(taken, time);
+    if (taken === null) {
+      return true;
+    }
+    if (time.diff(taken, "hours") >= med.interval.asHours()) {
+      return true;
+    }
+    return false;
+  }
+
+  function rmMed(id) {
+    const med = medLs.find((med) => med.id === id);
+    const upMed = medLs.filter((med) => med.id !== id);
+    setMedLs(upMed);
+    setLastTaken((prevTaken) => ({
+      ...prevTaken,
+      [med.name]: time,
+    }));
+
+    setMedDisable(med.id, !checkInterval(med));
+  }
+
+  useEffect(() => {
+    updateAlert();
+    medLs.forEach((med) => {
+      setMedDisable(med.id, !checkInterval(med));
+    });
+  }, [time]);
 
   function handleTimeChange(e) {
     const newTime = moment(e.target.value, "h:mm A");
@@ -98,6 +142,8 @@ function App() {
       setTime(newTime);
     }
   }
+
+  // html format
 
   return (
     <div className="container mx-auto">
