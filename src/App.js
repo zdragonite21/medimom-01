@@ -1,78 +1,36 @@
 import React, { useState, useEffect, Children } from "react";
 import MedItem from "./MedItem";
 import moment from "moment";
-
-const defaults = [
-  {
-    id: 1,
-    name: "Aspirin",
-    description: "Pain reliever",
-    time: ["8:00 AM"],
-    interval: 6,
-  },
-  {
-    id: 2,
-    name: "Acetaminophen",
-    description: "Pain reliever",
-    time: ["10:00 AM"],
-    interval: 4,
-  },
-  {
-    id: 3,
-    name: "Ibuprofen",
-    description: "Anti-inflammatory",
-    time: ["12:00 PM", "4:00 PM"],
-    interval: 2,
-  },
-];
+import { defaults } from "./defaults";
 
 function App() {
-  // helper functions
-
   const [time, setTime] = useState(moment());
+  const [meds, setMeds] = useState([]);
+  const [LastTaken, setLastTaken] = useState(
+    defaults.reduce((acc, med) => ({ ...acc, [med.name]: null }), {})
+  );
 
-  function setMedDisable(id, disabled) {
-    setMedLs((prevMedLs) =>
-      prevMedLs.map((med) => {
-        if (med.id === id) {
-          return { ...med, disabled };
-        } else {
-          return med;
-        }
-      })
-    );
-  }
+  useEffect(() => {
+    const sortedMeds = sortMeds(defaults);
+    setMeds(sortedMeds);
+  }, []);
 
-  function setMedAlert(id, alert) {
-    setMedLs((prevMedLs) =>
-      prevMedLs.map((med) => {
-        if (med.id === id) {
-          return { ...med, alert };
-        } else {
-          return med;
-        }
-      })
-    );
-  }
-
-  function updateAlert() {
-    medLs.forEach((med) => {
-      if (time.isAfter(med.time)) {
-        setMedAlert(med.id, true);
-      } else if (time.isSame(med.time) || time.isBefore(med.time)) {
-        setMedAlert(med.id, false);
-      }
+  useEffect(() => {
+    updateAlerts();
+    meds.forEach((med) => {
+      console.log(LastTaken);
+      setMedDisabled(med.id, !checkInterval(med));
     });
-  }
+  }, [time]);
 
-  function setMedLsSorted(medLs) {
-    const sortedMedLs = [];
+  function sortMeds(meds) {
+    const sortedMeds = [];
     var id = 0;
-    medLs.forEach((med) => {
+    meds.forEach((med) => {
       med.time.forEach((t) => {
         const medTime = moment(t, "h:mm A");
         const alert = time.isAfter(medTime) ? true : false;
-        sortedMedLs.push({
+        sortedMeds.push({
           ...med,
           id,
           time: medTime,
@@ -83,64 +41,83 @@ function App() {
         id++;
       });
     });
-    sortedMedLs.sort((a, b) => a.time.diff(b.time));
-    return sortedMedLs;
+    sortedMeds.sort((a, b) => a.time.diff(b.time));
+    return sortedMeds;
   }
 
-  // start
-
-  const [medLs, setMedLs] = useState(setMedLsSorted(defaults));
-
-  const [LastTaken, setLastTaken] = useState(
-    defaults.reduce((acc, med) => ({ ...acc, [med.name]: null }), {})
-  );
-
-  console.log(LastTaken);
-
-  function resetMedLs() {
-    setMedLs(setMedLsSorted(defaults));
-    setLastTaken(
-      defaults.reduce((acc, med) => ({ ...acc, [med.name]: null }), {})
-    );
+  function updateAlerts() {
+    meds.forEach((med) => {
+      if (time.isAfter(med.time)) {
+        setMedAlert(med.id, true);
+      } else if (time.isSame(med.time) || time.isBefore(med.time)) {
+        setMedAlert(med.id, false);
+      }
+    });
   }
 
   function checkInterval(med) {
-    // returns true if interval has passed since last taken
-    const taken = LastTaken[med.name];
-    console.log(taken, time);
-    if (taken === null) {
+    const lastTaken = getLastTaken(med.name);
+    console.log(lastTaken);
+    if (lastTaken === null) {
       return true;
     }
-    if (time.diff(taken, "hours") >= med.interval.asHours()) {
+    if (time.diff(lastTaken, "hours") >= med.interval.asHours()) {
       return true;
     }
     return false;
   }
 
-  function rmMed(id) {
-    const med = medLs.find((med) => med.id === id);
-    const upMed = medLs.filter((med) => med.id !== id);
-    setMedLs(upMed);
-    setLastTaken((prevTaken) => ({
-      ...prevTaken,
-      [med.name]: time,
-    }));
-
-    setMedDisable(med.id, !checkInterval(med));
+  function getLastTaken(medName) {
+    return LastTaken[medName];
   }
 
-  useEffect(() => {
-    updateAlert();
-    medLs.forEach((med) => {
-      setMedDisable(med.id, !checkInterval(med));
-    });
-  }, [time]);
+  function setMedDisabled(id, disabled) {
+    setMeds((prevMeds) =>
+      prevMeds.map((med) => {
+        if (med.id === id) {
+          return { ...med, disabled };
+        } else {
+          return med;
+        }
+      })
+    );
+  }
+
+  function setMedAlert(id, alert) {
+    setMeds((prevMeds) =>
+      prevMeds.map((med) => {
+        if (med.id === id) {
+          return { ...med, alert };
+        } else {
+          return med;
+        }
+      })
+    );
+  }
 
   function handleTimeChange(e) {
     const newTime = moment(e.target.value, "h:mm A");
     if (newTime.isValid()) {
       setTime(newTime);
     }
+  }
+
+  function handleRemoveMed(id) {
+    const med = meds.find((med) => med.id === id);
+    const upatedMeds = meds.filter((med) => med.id !== id);
+    setMeds(upatedMeds);
+    setLastTaken((prevTaken) => ({
+      ...prevTaken,
+      [med.name]: time,
+    }));
+    setMedDisabled(med.id, !checkInterval(med));
+  }
+
+  function handleResetMeds() {
+    setMeds(sortMeds(defaults));
+    setLastTaken(
+      defaults.reduce((acc, med) => ({ ...acc, [med.name]: null }), {})
+    );
   }
 
   // html format
@@ -150,7 +127,7 @@ function App() {
       <h1 className="text-4xl font-bold mb-4">My Medications</h1>
       <button
         className="font-bold m-4 w-24 h-12 bg-blue-500 text-white rounded hover:bg-blue-700 "
-        onClick={resetMedLs}
+        onClick={handleResetMeds}
       >
         Set Meds
       </button>
@@ -158,7 +135,7 @@ function App() {
       <p>{time.format("h:mm A")}</p>
 
       {/* Medication List */}
-      {medLs.map((med) => (
+      {meds.map((med) => (
         <MedItem
           key={med.id}
           name={med.name}
@@ -167,7 +144,7 @@ function App() {
           interval={med.interval.humanize()}
           disabled={med.disabled}
           alert={med.alert}
-          onRM={() => rmMed(med.id)}
+          onRM={() => handleRemoveMed(med.id)}
         />
       ))}
     </div>
