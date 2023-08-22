@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/medimom-01/static/css/main.3301adeb.css",
-    "main.js": "/medimom-01/static/js/main.39f6d9ad.js",
+    "main.js": "/medimom-01/static/js/main.7488ac0e.js",
     "static/js/787.f22bb5f8.chunk.js": "/medimom-01/static/js/787.f22bb5f8.chunk.js",
     "index.html": "/medimom-01/index.html",
     "main.3301adeb.css.map": "/medimom-01/static/css/main.3301adeb.css.map",
-    "main.39f6d9ad.js.map": "/medimom-01/static/js/main.39f6d9ad.js.map",
+    "main.7488ac0e.js.map": "/medimom-01/static/js/main.7488ac0e.js.map",
     "787.f22bb5f8.chunk.js.map": "/medimom-01/static/js/787.f22bb5f8.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.3301adeb.css",
-    "static/js/main.39f6d9ad.js"
+    "static/js/main.7488ac0e.js"
   ]
 }
