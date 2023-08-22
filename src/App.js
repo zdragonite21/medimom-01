@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Children } from "react";
+import React, { useState, useEffect } from "react";
 import MedItem from "./MedItem";
 import moment from "moment";
 import { defaults } from "./defaults";
@@ -6,19 +6,32 @@ import { defaults } from "./defaults";
 function App() {
   const [time, setTime] = useState(moment());
   const [meds, setMeds] = useState([]);
-  const [LastTaken, setLastTaken] = useState(
-    defaults.reduce((acc, med) => ({ ...acc, [med.name]: null }), {})
-  );
+  const [lastTaken, setLastTaken] = useState([]);
 
   useEffect(() => {
-    const sortedMeds = sortMeds(defaults);
-    setMeds(sortedMeds);
+    const storedMeds = JSON.parse(localStorage.getItem("meds"));
+    if (storedMeds) {
+      setMeds(storedMeds);
+    } else {
+      const sortedMeds = sortMeds(defaults);
+      setMeds(sortedMeds);
+      localStorage.setItem("meds", JSON.stringify(sortedMeds));
+    }
+
+    const storedLastTaken = JSON.parse(localStorage.getItem("lastTaken"));
+    if (storedLastTaken) {
+      setLastTaken(storedLastTaken);
+    } else {
+      setLastTaken(
+        defaults.reduce((acc, med) => ({ ...acc, [med.name]: null }), {})
+      );
+      localStorage.setItem("lastTaken", JSON.stringify(lastTaken));
+    }
   }, []);
 
   useEffect(() => {
     updateAlerts();
     meds.forEach((med) => {
-      console.log(LastTaken);
       setMedDisabled(med.id, !checkInterval(med));
     });
   }, [time]);
@@ -56,19 +69,19 @@ function App() {
   }
 
   function checkInterval(med) {
-    const lastTaken = getLastTaken(med.name);
-    console.log(lastTaken);
-    if (lastTaken === null) {
+    const lastTakenTime = getLastTaken(med.name);
+    console.log(lastTakenTime);
+    if (lastTakenTime === null) {
       return true;
     }
-    if (time.diff(lastTaken, "hours") >= med.interval.asHours()) {
+    if (time.diff(lastTakenTime, "hours") >= med.interval.asHours()) {
       return true;
     }
     return false;
   }
 
   function getLastTaken(medName) {
-    return LastTaken[medName];
+    return lastTaken[medName];
   }
 
   function setMedDisabled(id, disabled) {
@@ -110,17 +123,22 @@ function App() {
       ...prevTaken,
       [med.name]: time,
     }));
+    localStorage.setItem("meds", JSON.stringify(upatedMeds));
+    localStorage.setItem("lastTaken", JSON.stringify(lastTaken));
     setMedDisabled(med.id, !checkInterval(med));
   }
 
   function handleResetMeds() {
-    setMeds(sortMeds(defaults));
-    setLastTaken(
-      defaults.reduce((acc, med) => ({ ...acc, [med.name]: null }), {})
+    const defaultLastTaken = defaults.reduce(
+      (acc, med) => ({ ...acc, [med.name]: null }),
+      {}
     );
+    const defaulSortMeds = sortMeds(defaults);
+    setMeds(sortMeds(defaults));
+    setLastTaken(defaultLastTaken);
+    localStorage.setItem("meds", JSON.stringify(defaulSortMeds));
+    localStorage.setItem("lastTaken", JSON.stringify(defaultLastTaken));
   }
-
-  // html format
 
   return (
     <div className="container mx-auto">
